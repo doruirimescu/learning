@@ -501,8 +501,8 @@ With the two-layer model and the upgrade/recovery flow in hand, the natural foll
 
 - **APT pinning & preferences** (`/etc/apt/preferences.d/`, the priority numbers you saw in `apt-cache policy`) — how to deliberately prefer or hold back versions across repos, the controlled version of the "downgrade" situations in §8.
 - **Snap and Flatpak** — the *other* packaging worlds now coexisting with `apt` on Ubuntu (self-contained, sandboxed, auto-updating), and why a program might be installed two different ways.
-- **Building your own `.deb`** — write the control file and maintainer scripts yourself, and the two-phase install and the four scripts stop being abstract.
-- **[Disk Usage & Resource Monitoring](03-disk-usage-and-resource-monitoring.md)** — directly relevant: a **full disk** (especially on `/` or `/var` or wherever `TMPDIR` points) is a leading cause of failed `postinst` scripts and broken upgrades. The `apt clean` / package-cache note in that lesson's reclaim table connects straight back here.
-- **[systemd Services](04-systemd-services.md)** — what a `postinst` so often does last is *register and start a service*; understanding units explains the final step of "configure."
+- **[Building your own `.deb`](02-building-your-own-deb.md)** — the very next lesson in this folder. Write the control file and the four maintainer scripts yourself, and the two-phase install stops being abstract — you'll *cause* (and fix) the `iU`/`iF` states from §2 on purpose.
+- **[Disk Usage & Resource Monitoring](../03-disk-usage-and-resource-monitoring.md)** — directly relevant: a **full disk** (especially on `/` or `/var` or wherever `TMPDIR` points) is a leading cause of failed `postinst` scripts and broken upgrades. The `apt clean` / package-cache note in that lesson's reclaim table connects straight back here.
+- **[systemd Services](../04-systemd-services.md)** — what a `postinst` so often does last is *register and start a service*; understanding units explains the final step of "configure."
 
 The instinct to carry forward: **whenever package management misbehaves, ask "which layer?"** — is a *crate* half-shelved on the dock (`dpkg`, fix with `dpkg --configure -a`), or is the *order/graph* inconsistent (`apt`, fix with `apt-get -f install`)? Name the layer, and the right command names itself.
