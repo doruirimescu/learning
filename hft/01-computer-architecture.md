@@ -147,7 +147,7 @@ syms:    [sym0   sym1   sym2   sym3   ...]
 
 Now when you scan prices, every byte of every cache line you fetch *is a price you want.* One fetch gives you 16 prices. The prefetcher locks onto the steady march. You touch the minimum possible number of cache lines and waste nothing. For a price-scan hot path, SoA can be **several times faster** than AoS, again with identical arithmetic.
 
-> **The lesson: lay out data according to how the hot path *accesses* it, not according to how you conceptually *group* it.** Objects-bundling-their-fields is comfortable for human reasoning but often wrong for the cache. This idea — called **data-oriented design** — is foundational to HFT C++ (Lesson 7), and now you know *why* it works: it's the cache line (Section 3) and the prefetcher (Section 4) speaking. **The cache doesn't care about your object model. It cares about which 64-byte folders you touch, and in what order.**
+> **The lesson: lay out data according to how the hot path *accesses* it, not according to how you conceptually *group* it.** Objects-bundling-their-fields is comfortable for human reasoning but often wrong for the cache. This idea — called **data-oriented design** — is foundational to HFT C++ (Lesson 8), and now you know *why* it works: it's the cache line (Section 3) and the prefetcher (Section 4) speaking. **The cache doesn't care about your object model. It cares about which 64-byte folders you touch, and in what order.**
 
 ---
 
@@ -199,7 +199,7 @@ Now connect it to HFT. A few nanoseconds, *occasionally*, sounds harmless. But:
 - A branch whose outcome is **predictable** (almost always goes the same way, or follows a simple repeating pattern) is essentially free — the predictor nails it.
 - A branch whose outcome is **data-dependent and effectively random** — for example, "is this incoming order a buy or a sell?" where it's genuinely 50/50 and unpredictable — defeats the predictor. It guesses wrong about half the time, and you eat the full mispredict penalty on a huge fraction of those branches, right in your hot path.
 
-> **This is why HFT code is written to be branch-predictable, or branch-*less* entirely.** Engineers restructure logic so the common case is an overwhelmingly-predictable branch (so it's free), and sometimes eliminate unpredictable branches altogether using **branchless techniques** — computing both possibilities and selecting between them with arithmetic or a conditional-move instruction, so there's *no branch for the predictor to miss.* You'll meet the C++ forms of this in Lesson 7 (`[[likely]]`/`[[unlikely]]`, branchless selection). The *reason* they matter is this section: an unpredictable branch in the hot path is a recurring ~5 ns tax, and in a race scored in nanoseconds, that's real.
+> **This is why HFT code is written to be branch-predictable, or branch-*less* entirely.** Engineers restructure logic so the common case is an overwhelmingly-predictable branch (so it's free), and sometimes eliminate unpredictable branches altogether using **branchless techniques** — computing both possibilities and selecting between them with arithmetic or a conditional-move instruction, so there's *no branch for the predictor to miss.* You'll meet the C++ forms of this in Lesson 8 (`[[likely]]`/`[[unlikely]]`, branchless selection). The *reason* they matter is this section: an unpredictable branch in the hot path is a recurring ~5 ns tax, and in a race scored in nanoseconds, that's real.
 
 A crucial subtlety for HFT's obsession with *predictability* (jitter, from Module 0): branch misprediction is a source of *variance*, not just average cost. The same code path can be fast when the branch predictor is "warm" and trained, and slower right after a pattern change — exactly the kind of inconsistency HFT works to eliminate.
 
@@ -249,9 +249,9 @@ Remember that the unit of caching is the **64-byte cache line** (Section 3), not
 
 > **The analogy: two chefs at opposite ends of one long cutting board.** Chef A chops onions on the left; Chef B dices carrots on the right. They never touch each other's food. But it's *one board*, and the kitchen's rule is "only one chef may hold the board at a time." So every time A reaches to chop, he must take the whole board — yanking it away from B — and then B must take it back. They spend their day passing the board back and forth instead of cooking, *purely because their unrelated work shares one physical object.* That's false sharing: unrelated data, one cache line, ruinous ping-ponging.
 
-False sharing can slow a concurrent hot path by **5–10×**, and it's invisible in the source code — the variables look independent because they *are* independent. The fix, which you'll write in C++ in Lesson 7, is **padding and alignment**: deliberately space hot, independently-written variables so each lives on its *own* cache line (e.g. `alignas(64)`), giving each chef his own cutting board. The *reason* you'll do that lives here: the coherence protocol works on whole lines, so you keep independently-written data on separate lines.
+False sharing can slow a concurrent hot path by **5–10×**, and it's invisible in the source code — the variables look independent because they *are* independent. The fix, which you'll write in C++ in Lesson 8, is **padding and alignment**: deliberately space hot, independently-written variables so each lives on its *own* cache line (e.g. `alignas(64)`), giving each chef his own cutting board. The *reason* you'll do that lives here: the coherence protocol works on whole lines, so you keep independently-written data on separate lines.
 
-This section is also why HFT favors a **share-nothing, thread-per-core** design (Lesson 7): rather than many cores contending over shared mutable data (paying coherence costs and risking false sharing), each core owns its own data and threads communicate by passing messages through carefully-designed lock-free queues. Less sharing means less coherence traffic means lower, more predictable latency.
+This section is also why HFT favors a **share-nothing, thread-per-core** design (Lesson 8): rather than many cores contending over shared mutable data (paying coherence costs and risking false sharing), each core owns its own data and threads communicate by passing messages through carefully-designed lock-free queues. Less sharing means less coherence traffic means lower, more predictable latency.
 
 ---
 
@@ -315,7 +315,7 @@ Everything in this lesson hangs off a single inversion of the naive picture of a
 - Net: a message needs nanoseconds of *computing*; whether it takes 50 ns or 5,000 ns is decided by **how often the core stalls** — and reducing stalls (and their variance) is the whole job. (§12)
 - You find the stalls with **hardware performance counters** (`perf`), measuring the **tail**, never guessing. (§13)
 
-If this model is solid, every later lesson clicks into place: the NIC (Lesson 3) is about getting packet data into a warm cache without the kernel; Linux tuning (Lesson 4) is about keeping the core un-stalled and un-interrupted; kernel bypass (Lesson 6) removes across-the-board overhead; and HFT C++ (Lesson 7) is, almost line for line, *this lesson turned into code.*
+If this model is solid, every later lesson clicks into place: the NIC (Lesson 3) is about getting packet data into a warm cache without the kernel; Linux tuning (Lesson 4) is about keeping the core un-stalled and un-interrupted; kernel bypass (Lesson 6) removes across-the-board overhead; and HFT C++ (Lesson 8) is, almost line for line, *this lesson turned into code.*
 
 ---
 
@@ -363,7 +363,8 @@ You now hold the mental model the rest of the course is built on. The natural ne
 
 - **Lesson 2 — Modern Assembly.** See *exactly* what your C++ becomes, and learn to read the compiler's output so you can spot the dependency chains (§6), the branches (§7), and the memory accesses (§3) this lesson described — in the actual instructions. Architecture tells you what costs; assembly shows you where it is.
 - **Lesson 3 — Hardware.** Zoom out from the core to the NIC, PCIe, and the box, where the packet's journey begins and ends — and where NUMA (§9) and BIOS tuning (hyper-threading, §11) get decided physically.
-- **Lesson 7 — C++ for HFT.** The payoff: every technique there (data-oriented layout, `alignas` against false sharing, branchless code, avoiding pointer-chasing containers) is a direct, line-by-line response to a concept in *this* lesson. When you read it, you'll recognize every rule's architectural reason.
+- **Lesson 7 — C++ Data Structures.** The first cash-in: *why* contiguous containers (`std::vector`, `std::array`) beat pointer-chasing ones (`std::list`, `std::map`) is exactly the cache-line and prefetcher story of §§3–5, now made concrete container by container.
+- **Lesson 8 — C++ for HFT.** The full payoff: every technique there (data-oriented layout, `alignas` against false sharing, branchless code, avoiding pointer-chasing containers) is a direct, line-by-line response to a concept in *this* lesson. When you read it, you'll recognize every rule's architectural reason.
 - **Hands-on milestone (from the README):** write two versions of a sum-a-million-numbers program — one over a contiguous array, one over a linked list — time them, and *predict the ratio before you measure.* Then use `perf stat` to watch the cache-miss counts diverge. Feeling that 10×+ gap in your own hands, and seeing it in the counters, makes this entire lesson permanent.
 
 > The deepest takeaway to carry forward: **you are not optimizing instructions; you are choreographing data movement so the core never has to wait.** Everything else is detail.
